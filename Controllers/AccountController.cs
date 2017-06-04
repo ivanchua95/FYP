@@ -29,7 +29,7 @@ namespace FYP.Controllers
         {
             if (curUser() == null)
             {
-                string sql = @"SELECT * FROM Al_Lecturer WHERE Name = '{0}' AND Password = HASHBYTES('SHA1', '{1}')";
+                string sql = @"SELECT * FROM Al_Lecturer WHERE Email = '{0}' AND Password = HASHBYTES('SHA1', '{1}')";
                 var result = DBUtl.GetList(sql, login.UserId, login.Password);
                 if (result.Count > 0)
                 {
@@ -37,21 +37,82 @@ namespace FYP.Controllers
                     login.Name = user.Name;
                     login.Password = null;
                     login.Id = user.Id;
+                    login.type = user.type;
                     HttpContext.Session.SetObject("Al_lecturer", login);
-                    //return RedirectToAction("Index");
-                    return View("Index");
+                    return View("home");
                 }
                 ViewData["layout"] = "_Layout";
                 ViewData["msg"] = "Login failed";
                 return View("Index");
             }
+
             else
-                return RedirectToAction("Index");
+               return RedirectToAction("Index");
         }
         public IActionResult Logout()
         {
             HttpContext.Session.Clear();
             return RedirectToAction("Index");
+        }
+
+        public IActionResult Index()
+        {
+            return View();
+        }
+        public IActionResult home()
+        {
+            return View("home");
+        }
+
+        public IActionResult InvTimeslot()
+        {
+        //List<Timeslot> model = DBUtl.GetList<Timeslot>("SELECT * FROM Timeslot WHERE BookedBy = {0}", curUser().Id);
+        //  return View(model);
+         return View("InvTimeSlot");
+        }
+
+        public IActionResult IndAvailabilityIndex()
+        {
+            if (curUser()!= null)
+            {
+                List<Availability> model = DBUtl.GetList<Availability>(@"SELECT a.AlId, a.StartTime
+                                                FROM Availability a, AlId al
+                                                WHERE a.AlId = a.Id");
+                ViewBag.Message = TempData["Message"];
+
+                return View(model);
+            }
+            else
+                return RedirectToAction("Index");
+        }
+
+        [HttpPost]
+        public IActionResult IndAvailability(Availability newAvailability)
+        {
+            if (curUser() != null)
+            {
+                if (ModelState.IsValid)
+                {
+                    string sql = @"INSERT INTO Availabilty
+                                    (StartTime, AlId)
+                                    VALUES ('{0}', {1})";
+                    if (DBUtl.ExecSQL(
+                                 sql,
+                                 newAvailability.StartTime, newAvailability.AlId)
+                                 == 1)
+                        TempData["Msg"] = "Timeslot saved.";
+                    else
+                        TempData["Msg"] = "Failed to indicate timeslot.";
+                    return RedirectToAction("Index");
+                }
+                else
+                {
+                    TempData["Msg"] = "Invalid information entered!";
+                    return RedirectToAction("Index");
+                }
+            }
+            else
+                return RedirectToAction("Index");
         }
 
     }
